@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Coincatcher</title>
+  <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
+  <script type="text/javascript" src="fontLoader.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+  <div style="font-family: VT323;width: 100%; margin: 0; text-align: center;">
+    <h1> coincatcher. </h1>
+    <p> Tap 'space' to jump (multi-tap allowed). Use arrow keys to move.</p>
+  </div>
+
+  <div id= "game" style="text-align: center;">
+
+  </div>
+
+<script type="text/javascript">
+
+// global game options
+let gameOptions = {
+    enemyStartSpeed: 150,
+    spawnRange: [300, 700],
+    enemySizeRange: [50, 250],
+    playerGravity: 2000,
+    jumpForce: 2000*0.5,
+    spaceBetweenHurdles: 400,
+    playerStartPosition: 500,
+    jumps: 25,
+    baseDepth: 5000,
+    baseWidth: 700
+}
+
+var score = gameOptions.jumps;
+
+
+
+
+window.onload = function() {
+    // object containing configuration options
+    let gameConfig = {
+        type: Phaser.AUTO,
+        width: 700,
+        height: 600,
+        scene: gameClass,
+        backgroundColor: 0xc5c1ff,
+        parent: 'game',
+
+        // physics settings
+        physics: {
+            default: "arcade",
+            arcade: {
+                gravity: {y:  gameOptions.playerGravity  },
+                debug: false,
+                checkCollision: {
+                  top: false,
+                  bottom:false,
+                  left:true,
+                  right:true,
+                }
+            }
+        }
+    }
+    game = new Phaser.Game(gameConfig);
+    window.focus();
+    resize();
+    window.addEventListener("resize", resize, false);
+}
+
+
+class gameClass extends Phaser.Scene{
+  constructor(){
+      super("PlayGame");
+  }
+
+  preload() {
+    this.load.image('2bricks', 'assets/2bricks.png');
+    this.load.image('coin', 'assets/coin.png');
+    // this.load.image('bg', 'assets/coins.jpeg');
+    this.load.image('3bricks', 'assets/3bricks.png');
+    this.load.image('4bricks', 'assets/4bricks.png');
+    this.load.image('base', 'assets/base.png');
+    this.load.spritesheet('player', 'assets/player1.png', { frameWidth: 72.2, frameHeight: 97 });
+
+  }
+
+  loadEntities() {
+    const numberToBricks = {0:'2bricks',1: '2bricks', 2: '2bricks', 3:'2bricks', 4:'2bricks' }
+    //
+    // coins = this.physics.add.group({
+    //     key: 'star',
+    //     repeat: 13,
+    //     // setXY: { x: 12, y: 0, stepX: 70 }
+    // });
+
+    this.platforms = this.physics.add.staticGroup();
+    this.bg = this.add.tileSprite(0,0,800,600);
+    // this.bg.autoScroll();/
+    this.coins = this.physics.add.staticGroup({
+      // key: 'star',
+      // repeat: 13,
+      // setXY: { x: 12, y: 0, stepX: 70 }
+    })
+    console.log(gameOptions.baseDepth);
+    this.platforms.create(350, gameOptions.baseDepth + 100, 'base').refreshBody();
+
+    console.log(Math.random()*3+1);
+    var start = (gameOptions.baseDepth-1.5*gameOptions.spaceBetweenHurdles);
+    for (let i = start; i >0;i = i-gameOptions.spaceBetweenHurdles) {
+      this.coins.create(Math.random()*(700), i+0.4*gameOptions.spaceBetweenHurdles, 'coin').setScale(0.2).refreshBody();
+      this.platforms.create(Math.random()*700, i, numberToBricks[Math.round(Math.random()*3+1)]).refreshBody();
+      this.platforms.create(Math.random()*700, i, numberToBricks[Math.round(Math.random()*3+1)]).refreshBody();
+    }
+
+
+    this.player = this.physics.add.sprite(100, gameOptions.baseDepth*.75, 'player').setScale(1)
+    this.player.setBounce(0.01); // our player will bounce from items
+    this.player.setCollideWorldBounds(true);
+    //  Collide the player and the coins with the platforms
+    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.overlap(this.player, this.coins, this.collectStar, null, this);
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    // // set bounds so the camera won't go outside the game world
+    this.physics.world.setBounds(0, 0,gameOptions.baseWidth,gameOptions.baseDepth);
+    this.cameras.main.setBounds(0, 0,gameOptions.baseWidth,gameOptions.baseDepth);
+    // make the camera follow the player
+    this.cameras.main.startFollow(this.player);
+    this.scoreText = this.add.text(350, 450, score, { fontSize: '100px', fill: '#fff' });
+    this.scoreText.setScrollFactor(0);
+    this.scoreText.setOrigin(0.5,0);
+    this.scoreText.setFontFamily("VT323");
+
+    this.taps = this.add.text(350, 450, 'TAPS', { fontSize: '20px', fill: '#fff' });
+    this.taps.setScrollFactor(0);
+    this.taps.setOrigin(0.5,0);
+    this.taps.setFontFamily("VT323");
+
+  }
+
+  loadAnimations() {
+    this.anims.create({
+        key: 'walk',
+        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 2 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'idle',
+        frames: [ { key: 'player', frame: 9 } ],
+        // frames: this.anims.generateFrameNumbers('player', { start: 0, end: 0 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'catch',
+        frames: [ { key: 'player', frame: 11 }, { key: 'player', frame: 11 }, { key: 'player', frame: 11 } ],
+        frameRate: 100,
+        repeat: -1
+    });
+
+
+  }
+
+  create() {
+    this.loadEntities();
+    this.loadAnimations();
+  }
+
+  update() {
+    if (this.cursors.left.isDown) // if the left arrow key is down
+    {
+        this.player.body.setVelocityX(-200); // move left
+        this.player.anims.play('walk', true); // play walk animation
+        this.player.flipX= true; // flip the sprite to the left
+        // this.player.flipX= true; // flip the sprite to the left
+    }
+    else if (this.cursors.right.isDown) // if the right arrow key is down
+    {
+
+      // console.log('right');
+        this.player.body.setVelocityX(200); // move right
+        this.player.anims.play('walk', true); // play walk animation
+        this.player.flipX= false; // flip the sprite to the left
+    } else {
+      this.player.anims.play('idle', true); // play walk animation
+      this.player.body.setVelocityX(0); // move right
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.spacebar)){
+          // var bullet = bullets.get();
+          if(score > 0) {
+            this.scoreText.setColor("white")
+            if(score < 10) {
+              this.scoreText.setColor("red")
+            }
+            score -=1
+
+            this.scoreText.setText(score)
+            this.player.body.setVelocityY(-1* gameOptions.jumpForce); // jump up
+          } else {
+            this.taps.setText('GAME')
+            this.taps.setColor('red')
+            this.scoreText.setText('OVER')
+            // gameOver=true;
+          }
+  }
+
+    // if ((this.cursors.space.isDown || this.cursors.up.isDown))
+    // {
+    //
+    //     score -= 1
+    //     this.scoreText.setText(score)
+    //
+    //     if(score > 0) {
+    //
+    //     if(this.cursors.space.isDown || this.cursors.up.isDown) {
+    //       this.player.anims.play('walk', false); // play walk animation
+    //     }
+    //     this.player.anims.play('idle', true); // play walk animation
+    //     this.player.body.setVelocityY(-1* gameOptions.jumpForce); // jump up
+    //   }
+    // }
+
+  }
+
+  collectStar (player, star) {
+      star.disableBody(true, true);
+
+      //  Add and update the score
+      score += 1;
+      this.scoreText.setText(score);
+      this.player.anims.play('catch', true); // play walk animation
+
+      // if (coins.countActive(true) === 0)
+      // {
+      //     //  A new batch of coins to collect
+      //     coins.children.iterate(function (child) {
+      //
+      //         child.enableBody(true, child.x, 0, true, true);
+      //
+      //     });
+      //
+      //     var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+      //
+      //     var bomb = bombs.create(x, 16, 'bomb');
+      //     bomb.setBounce(1);
+      //     bomb.setCollideWorldBounds(true);
+      //     bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+      //     bomb.allowGravity = false;
+      //
+      // }
+  }
+
+
+}
+
+
+function resize(){
+
+    let canvas = document.querySelector("canvas");
+    // canvas.style.margin = "20px"
+    // let windowWidth = window.innerWidth;
+    // let windowHeight = window.innerHeight;
+    // let windowRatio = windowWidth / windowHeight;
+    // let gameRatio = game.config.width / game.config.height;
+    // if(windowRatio < gameRatio){
+    //     canvas.style.width = windowWidth + "px";
+    //     canvas.style.height = (windowWidth / gameRatio) + "px";
+    // }
+    // else{
+    //     canvas.style.width = (windowHeight * gameRatio) + "px";
+    //     canvas.style.height = windowHeight + "px";
+    // }
+}
+
+</script>
+
+</body>
+</html>
