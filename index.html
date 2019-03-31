@@ -138,12 +138,12 @@ class gameClass extends Phaser.Scene{
     this.cameras.main.setBounds(0, 0,gameOptions.baseWidth,gameOptions.baseDepth);
     // make the camera follow the player
     this.cameras.main.startFollow(this.player);
-    this.scoreText = this.add.text(350, 450, score, { fontSize: '100px', fill: '#fff' });
+    this.scoreText = this.add.text(350, 400, score, { fontSize: '100px', fill: '#fff' });
     this.scoreText.setScrollFactor(0);
     this.scoreText.setOrigin(0.5,0);
     this.scoreText.setFontFamily("VT323");
 
-    this.taps = this.add.text(350, 450, 'TAPS', { fontSize: '20px', fill: '#fff' });
+    this.taps = this.add.text(350, 400, 'TAPS LEFT', { fontSize: '20px', fill: '#fff' });
     this.taps.setScrollFactor(0);
     this.taps.setOrigin(0.5,0);
     this.taps.setFontFamily("VT323");
@@ -205,6 +205,8 @@ class gameClass extends Phaser.Scene{
           // var bullet = bullets.get();
           if(score > 0) {
             this.scoreText.setColor("white")
+            this.taps.setColor("white")
+            this.taps.setText("TAPS LEFT")
             if(score < 10) {
               this.scoreText.setColor("red")
             }
